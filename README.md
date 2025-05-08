@@ -1,29 +1,28 @@
-Sudoku solver
+My Sudoku Solver in C
 ======
+Это мой собственный проект — решатель судоку на языке C с возможностью оценки сложности задач по количеству откатов (backtracks), необходимых для нахождения решения.
 
-This sudoku solver finds the most constrained cell, choses a feasible number, and proceeds recursively.
-At some point in the future it might have to backtrack and try another path. 
-My goal was to use the solver to identify the hardest puzzles. The measure of difficulty for a puzzle was how many times my algorithm had to backtrack on it. 
+Программа не только находит решения для головоломок судоку, но и позволяет анализировать их сложность. Сложность измеряется количеством откатов, которые алгоритм выполняет для нахождения правильного ответа. Это полезно для статистического анализа и визуализации сложности задач.
 
-At the bottom of this page I show the hardest sudoku puzzles I found. Here is how you can reproduce the experiments by yourself:
+Проект полностью написан на языке C и не использует сторонних библиотек.
 
-Requirements
+Требования
 ------
+- C-компилятор (например, `gcc`)
+- Утилита `gnuplot` для построения графиков
+- Утилита `ImageMagick` для рендеринга изображений
+- Unix-совместимая оболочка (`bash`)
 
-To run the solver you just need a C compiler, such as gcc. 
-To do the full analysis you will also need gnuplot and ImageMagick convert tool, and some sort of Unix/Linux shell.
-
-Compilation
+Компиляция
 ------
 
 > gcc solver.c -o solver
  
-Usage
+Использование
 ------
 
 
-The input is assumed to come from the standard input, and the program will print to the standard output.
-There is one command line argument, which defines the format of the input: 
+Программа читает входные данные из стандартного ввода и выводит решение в стандартный вывод. В командной строке можно указать формат ввода.
 
  1. Grid:
 
@@ -45,31 +44,30 @@ There is one command line argument, which defines the format of the input:
  530070000600195000098000060800060003400803001700020006060000280000419005000080079
 ```
 
-Example:
+Пример запуска:
 
 > ./solver 2 < puzzle.txt
 
 
-Finding hard Sudoku puzzles
+Анализ сложности
 ======
 
-Instead of outputting the puzzle solution, we can instead output the number of backtrackings that the algorithm had to perform to achieve that solution. This gives an estimate on how hard the puzzle is.
-I didn't put a command line option for this, but you can just (un)comment the appropriate lines in the main routine:
+Программа оценивает сложность задачи, подсчитывая количество откатов, которые алгоритм должен выполнить, чтобы найти решение. Для этого необходимо раскомментировать соответствующую строку в функции main:
 
 ```C
 print(&s, 1);    // prints the solution
 // printf("%d\n", s.nbacktracks);  // prints how many times it had to backtrack
 ```
 
-I downloaded a file with about 50000 puzzles (with 17 given numbers, out of the 81):
+Для анализа сложности можно использовать набор из ~50 000 задач:
 
 > wget http://school.maths.uwa.edu.au/~gordon/sudoku17 -O puzzles.txt
 
-Then I computed the number of backtracks per puzzle for all of them (which takes a few hours!):
+Для подсчёта откатов для всех задач из файла выполните:
 
 > ./solve 1 < puzzles.txt > nbacktracks.txt
 
-And generated an histogram with gnuplot. I have a script called make_histograms.sh containing this:
+Для построения гистограммы количества откатов используйте скрипт make_histograms.sh:
 
 > cat nbacktracks.txt | sort -n | awk -F" " '{print exp(int(log($1))) }' | uniq -c > histogram.txt
 
@@ -86,7 +84,7 @@ And generated an histogram with gnuplot. I have a script called make_histograms.
 > echo "plot 'histogram.txt' u 2:1 w boxes t 'Sudoku 17-puzzles' ;"  >> plot.gnu
 
 
-You can then run: 
+Запуск:
  
 > ./make_histograms.sh
 
@@ -95,8 +93,7 @@ You can then run:
 ![ScreenShot](https://raw.github.com/hpenedones/sudoku/master/analysis/histogram.png)
 
 
-It's curious that with a logscale x-axis the distribution looks like a Gaussian. I don't have an explanation for this, however. And it's quite impressive to see that some puzzles need about 1 million backtrackings!
-I decided to locate the hardest and share them here. Let me know if you also found them hard to solve!
+Для вывода списка 10 самых сложных судоку (по количеству откатов) используйте команду:
 
 
 > paste nbacktracks.txt puzzles.txt | sort -nr | head -n 10
@@ -113,28 +110,26 @@ I decided to locate the hardest and share them here. Let me know if you also fou
 427221 010600420000800000000050000005000030700400000000001000200030700000000504040000000
 419682 200100600004000500000000000030040000800000009000050700050700010000800030007000000
 ```
-Ok, so now we need to render this sudoku puzzles in a human-friendly fashion. So we proceed as follows:
-
-We store the top 10 sudoku in a file (drop the backtrack counts):
+Итак, теперь нам нужно отобразить эти головоломки судоку в удобном для пользователя виде.
+Мы сохраняем 10 лучших судоку в файле (исключаем количество обратных ходов).:
 
 > paste nbacktracks.txt puzzles.txt | sort -nr | head -n 10 | cut -f 2 > top10.txt
 
-Download an empty sudoku board image from somewhere in the web (searched google images with "sudoku empty"):
+Загрузите изображение пустой доски для судоку откуда-нибудь из Интернета (поиск в Google images по запросу "sudoku empty").:
 
 > wget http://www.scouk.net/entertainment/sudoku/blank_grid.gif
 
-And now we are ready for some awesomeness! 
 
 Rendering Sudoku puzzles
 ------
 
-We use ImageMagick convert tool to do the full rendering in one line:
+Затем используйте следующий скрипт для создания изображений:
 
 > i=1; cat top10.txt | while read line;  do echo $line | fold -w 9 | tr 0 " " | head -c 89 | convert  -pointsize 100 -font Courier -size 531x721 label:@- puzzle.png ; convert puzzle.png -border 10x10 -splice 0x10 -resize 328x328\! puzzle.png; convert blank_grid.gif puzzle.png -average hardest_sudoku_$i.png; i=`expr $i + 1`; done
 
-Done!
+Готово!
 
-We can now display the top 10 hardest sudoku puzzles (according to my solver): 
+Теперь мы можем отобразить 10 самых сложных головоломок судоку (по версии моего решателя).:
 
 ![ScreenShot](https://raw.github.com/hpenedones/sudoku/master/analysis/hardest_sudoku_1.png)
 
